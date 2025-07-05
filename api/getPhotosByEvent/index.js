@@ -1,16 +1,18 @@
 const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, SASProtocol, BlobSASPermissions } = require("@azure/storage-blob");
 
-const accountName = process.env.STORAGE_ACCOUNT_NAME;
-const accountKey = process.env.STORAGE_ACCOUNT_KEY;
+const accountName = process.env.AZURE_STORAGE_ACCOUNT;
+const accountKey = process.env.AZURE_STORAGE_KEY;
 const containerName = "fullsize";
 
 module.exports = async function (context, req) {
   const event = req.query.event;
   if (!event) {
     context.res = {
-      status: 400,
-      body: "Missing 'event' query parameter.",
+  status: 500,
+  body: JSON.stringify({ error: "Server error fetching photos" }),
+  headers: { "Content-Type": "application/json" }
     };
+
     return;
   }
 
