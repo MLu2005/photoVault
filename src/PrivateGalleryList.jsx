@@ -1,3 +1,4 @@
+// src/PrivateGalleryList.jsx
 import { Link } from "react-router-dom";
 
 const events = [
@@ -14,7 +15,7 @@ const events = [
   "Valkenburg",
 ];
 
-export default function PrivateLayout() {
+export default function PrivateGalleryList() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6 text-white">Private Gallery</h1>
@@ -32,4 +33,3 @@ export default function PrivateLayout() {
     </div>
   );
 }
-
