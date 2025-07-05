@@ -1,7 +1,8 @@
-const { BlobServiceClient } = require("@azure/storage-blob");
+const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, SASProtocol, BlobSASPermissions } = require("@azure/storage-blob");
 
+const accountName = process.env.STORAGE_ACCOUNT_NAME;
+const accountKey = process.env.STORAGE_ACCOUNT_KEY;
 const containerName = "fullsize";
-const connectionString = process.env.AzureWebJobsStorage; // używa tego, co masz już w konfiguracji Functions
 
 module.exports = async function (context, req) {
   const event = req.query.event;
@@ -14,15 +15,24 @@ module.exports = async function (context, req) {
   }
 
   try {
-    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    const credential = new StorageSharedKeyCredential(accountName, accountKey);
+    const blobServiceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     const prefix = `${event}/`;
     let urls = [];
 
     for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-      const blobClient = containerClient.getBlobClient(blob.name);
-      urls.push(blobClient.url);
+      const sasToken = generateBlobSASQueryParameters({
+        containerName,
+        blobName: blob.name,
+        permissions: BlobSASPermissions.parse("r"),
+        expiresOn: new Date(new Date().valueOf() + 3600 * 1000), // 1h
+        protocol: SASProtocol.Https,
+      }, credential).toString();
+
+      const url = `https://${accountName}.blob.core.windows.net/${containerName}/${blob.name}?${sasToken}`;
+      urls.push(url);
     }
 
     context.res = {
