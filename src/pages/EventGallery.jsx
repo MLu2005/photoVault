@@ -1,6 +1,6 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import useAuth from "./src/hooks/useAuth"; // UWAGA: ścieżka może być "../hooks/useAuth" jeśli plik w pages/
+import useAuth from "../hooks/useAuth"; // UWAGA: ścieżka może być "../hooks/useAuth" jeśli plik w pages/
 
 export default function EventGallery({ isPrivate }) {
   const { event } = useParams();
