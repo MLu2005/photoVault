@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
-import PrivateNavbar from "../PrivateNavbar";
+import { Link, Navigate } from "react-router-dom";
+import useAuth from "../hooks/useAuth";
+import GlobalNavbar from "../GlobalNavbar";
 
 const events = [
   "Amsterdam",
@@ -16,9 +17,14 @@ const events = [
 ];
 
 export default function PrivateLayout() {
+  const user = useAuth();
+
+  if (user === null) return <div className="text-white">Checking login...</div>;
+  if (!user) return <Navigate to="/" replace />;
+
   return (
     <div className="p-6">
-      <PrivateNavbar />
+      <GlobalNavbar />
       <h1 className="text-3xl font-bold mb-6 text-white">Private Gallery</h1>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {events.map((event) => (
@@ -34,4 +40,3 @@ export default function PrivateLayout() {
     </div>
   );
 }
-

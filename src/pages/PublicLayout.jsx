@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import GlobalNavbar from "../GlobalNavbar";
 
 const publicEvents = [
   { id: 1, name: "Wedding", slug: "wedding" },
@@ -9,6 +10,7 @@ const publicEvents = [
 export default function PublicLayout() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-6">
+      <GlobalNavbar />
       <h1 className="text-4xl font-bold mb-8 text-center">Public Gallery</h1>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
