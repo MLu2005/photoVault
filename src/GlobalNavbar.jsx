@@ -21,7 +21,7 @@ export default function GlobalNavbar() {
               Login with GitHub
             </a>
             <a
-              href={`/.auth/login/microsoft?post_login_redirect_uri=${window.location.pathname}`}
+              href={`/.auth/login/add?post_login_redirect_uri=${window.location.pathname}`}
               className="hover:underline"
             >
               Login with Microsoft
