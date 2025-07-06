@@ -5,12 +5,12 @@
       "allowedRoles": ["authenticated"]
     },
     {
-      "route": "/.auth/login/github",
-      "statusCode": 200
-    },
-    {
-      "route": "/.auth/logout",
+      "route": "/.auth/*",
       "statusCode": 200
     }
-  ]
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/.auth/*"]
+  }
 }
