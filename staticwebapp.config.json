@@ -1,0 +1,16 @@
+{
+  "routes": [
+    {
+      "route": "/private/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/.auth/login/github",
+      "statusCode": 200
+    },
+    {
+      "route": "/.auth/logout",
+      "statusCode": 200
+    }
+  ]
+}
