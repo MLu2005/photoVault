@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import GlobalNavbar from "../GlobalNavbar";
 
+const ALLOWED_ID = "df853e4c8f6849c397f13b8c3bbffdae";
+
 const events = [
   "Amsterdam",
   "Belgium",
@@ -20,7 +22,6 @@ export default function PrivateLayout() {
   const user = useAuth();
 
   if (user === null) {
-    // nadal trwa sprawdzanie sesji
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <p>Checking login...</p>
@@ -28,39 +29,23 @@ export default function PrivateLayout() {
     );
   }
 
-  if (!user) {
-    // nie zalogowany
+  if (!user || user.identityProvider !== "github" || user.userId !== ALLOWED_ID) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center text-center p-6">
         <div>
-          <h1 className="text-3xl font-bold mb-4">Access Restricted</h1>
-          <p className="mb-6">You must be logged in to view private galleries.</p>
-          <div className="space-y-3">
-            <a
-              href="/.auth/login/github?post_login_redirect_uri=/private"
-              className="block bg-white text-black px-6 py-2 rounded-xl font-semibold hover:bg-gray-200 transition"
-            >
-              Log in with GitHub
-            </a>
-            <a
-              href="/.auth/login/aad?post_login_redirect_uri=/private"
-              className="block bg-white text-black px-6 py-2 rounded-xl font-semibold hover:bg-gray-200 transition"
-            >
-              Log in with Microsoft
-            </a>
-            <Link
-              to="/"
-              className="block border border-white px-6 py-2 rounded-xl font-semibold hover:bg-white hover:text-black transition"
-            >
-              Return to Homepage
-            </Link>
-          </div>
+          <h1 className="text-3xl font-bold mb-4">Access Denied</h1>
+          <p className="mb-6">You are not allowed to view this gallery.</p>
+          <a
+            href="/"
+            className="block border border-white px-6 py-2 rounded-xl font-semibold hover:bg-white hover:text-black transition"
+          >
+            Return to Homepage
+          </a>
         </div>
       </div>
     );
   }
 
-  
   return (
     <div className="p-6">
       <GlobalNavbar />
