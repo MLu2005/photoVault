@@ -38,6 +38,24 @@ export default function EventGallery({ isPrivate }) {
   );
 }
 
+useEffect(() => {
+  async function fetchPhotos() {
+    try {
+      console.log("Fetching photos for event:", event); // DEBUG
+      const res = await fetch(`/api/getPhotosByEvent?event=${event}`);
+      console.log("Response status:", res.status);
+      const urls = await res.json();
+      console.log("Received photo URLs:", urls);
+      setPhotos(urls);
+    } catch (err) {
+      console.error("Error loading photos:", err);
+    }
+  }
+
+  fetchPhotos();
+}, [event]);
+
+
 
   return (
     <div className="min-h-screen bg-black text-white">
