@@ -13,24 +13,30 @@ export default function NewEventForm() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("event", eventName);
-    formData.append("file", file);
-
-    setStatus("⏳ Uploading...");
+    setStatus("⏳ Getting upload URL...");
 
     try {
-      const res = await fetch("/api/uploadPhoto", {
-        method: "POST",
-        body: formData,
+      const res = await fetch(`/api/getUploadUrl?event=${eventName}&filename=${encodeURIComponent(file.name)}`);
+      if (!res.ok) throw new Error("Could not get upload URL");
+
+      const { uploadUrl, blobName } = await res.json();
+
+      setStatus("⏳ Uploading...");
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "x-ms-blob-type": "BlockBlob",
+          "Content-Type": file.type
+        },
+        body: file
       });
 
-      if (!res.ok) throw new Error("Upload failed");
+      if (!uploadRes.ok) throw new Error("Upload failed");
 
-      const result = await res.json();
-      setStatus("✅ Uploaded: " + result.blobName);
+      setStatus("✅ Uploaded: " + blobName);
 
-      // Odświeżenie strony lub przekierowanie do nowego eventu
+      // Redirect after success
       setTimeout(() => {
         window.location.href = `/private/${eventName}`;
       }, 1000);
