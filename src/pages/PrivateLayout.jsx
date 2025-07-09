@@ -1,21 +1,13 @@
 import { Link } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import GlobalNavbar from "../GlobalNavbar";
+import NewEventForm from "./NewEventForm";
 
 const ALLOWED_ID = "df853e4c8f6849c397f13b8c3bbffdae";
 
 const events = [
-  "Amsterdam",
-  "Belgium",
-  "Berlin",
-  "Climbing",
-  "Cooking",
-  "Gala",
-  "Maastricht",
-  "Monschau",
-  "Music",
-  "StPeters",
-  "Valkenburg",
+  "Amsterdam", "Belgium", "Berlin", "Climbing", "Cooking", "Gala",
+  "Maastricht", "Monschau", "Music", "StPeters", "Valkenburg"
 ];
 
 export default function PrivateLayout() {
@@ -35,10 +27,7 @@ export default function PrivateLayout() {
         <div>
           <h1 className="text-3xl font-bold mb-4">Access Denied</h1>
           <p className="mb-6">You are not allowed to view this gallery.</p>
-          <a
-            href="/"
-            className="block border border-white px-6 py-2 rounded-xl font-semibold hover:bg-white hover:text-black transition"
-          >
+          <a href="/" className="block border border-white px-6 py-2 rounded-xl font-semibold hover:bg-white hover:text-black transition">
             Return to Homepage
           </a>
         </div>
@@ -49,7 +38,14 @@ export default function PrivateLayout() {
   return (
     <div className="p-6">
       <GlobalNavbar />
-      <h1 className="text-3xl font-bold mb-6 text-white">Private Gallery</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-white">Private Gallery</h1>
+        {/* ✔️ Formularz tworzenia eventu */}
+        <div className="text-sm text-gray-400 text-right max-w-xs" title="In Azure folders exist only when files are added to them. Add at least one photo.">
+          <NewEventForm />
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {events.map((event) => (
           <Link
