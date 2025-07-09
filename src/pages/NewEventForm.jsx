@@ -1,22 +1,23 @@
 import { useState } from "react";
 
-export default function NewEventForm({ onUpload }) {
+export default function NewEventForm() {
   const [eventName, setEventName] = useState("");
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     if (!eventName || !file) {
-      setStatus("Please provide folder name and image.");
+      setStatus("⚠️ Provide folder name and image.");
       return;
     }
-
-    setStatus("Uploading...");
 
     const formData = new FormData();
     formData.append("event", eventName);
     formData.append("file", file);
+
+    setStatus("⏳ Uploading...");
 
     try {
       const res = await fetch("/api/uploadPhoto", {
@@ -25,45 +26,46 @@ export default function NewEventForm({ onUpload }) {
       });
 
       if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-      setStatus("✅ Uploaded: " + data.blobName);
-      setEventName("");
-      setFile(null);
-      onUpload(); // odśwież listę folderów jeśli potrzeba
+
+      const result = await res.json();
+      setStatus("✅ Uploaded: " + result.blobName);
+
+      // Odświeżenie strony lub przekierowanie do nowego eventu
+      setTimeout(() => {
+        window.location.href = `/private/${eventName}`;
+      }, 1000);
     } catch (err) {
-      setStatus("❌ Error uploading photo");
+      console.error(err);
+      setStatus("❌ Error during upload.");
     }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mt-8 bg-white bg-opacity-10 p-6 rounded-xl text-white"
-    >
-      <h2 className="text-xl font-bold mb-4">➕ Add New Folder + Photo</h2>
+    <form onSubmit={handleSubmit} className="bg-white bg-opacity-10 p-4 rounded-xl">
+      <h2 className="text-lg font-semibold mb-2 text-white">➕ Add New Event</h2>
       <p className="text-sm text-gray-300 mb-2 italic">
-        The folder will only exist after at least one photo is uploaded.
+        You must upload at least one image to create a folder in Azure.
       </p>
       <input
         type="text"
-        placeholder="Folder name (e.g., Belgium)"
+        placeholder="Event name (e.g., Rome2025)"
         value={eventName}
         onChange={(e) => setEventName(e.target.value)}
-        className="block w-full mb-3 p-2 rounded bg-black border border-gray-600"
+        className="block w-full mb-2 p-2 rounded bg-black border border-gray-600 text-white"
       />
       <input
         type="file"
         accept="image/*"
         onChange={(e) => setFile(e.target.files[0])}
-        className="block mb-3"
+        className="block w-full mb-2 text-white"
       />
       <button
         type="submit"
-        className="px-4 py-2 bg-white text-black rounded hover:bg-gray-200"
+        className="bg-white text-black px-4 py-1 rounded hover:bg-gray-200 transition"
       >
         Upload
       </button>
-      {status && <p className="mt-2 text-sm">{status}</p>}
+      {status && <p className="text-sm mt-2 text-white">{status}</p>}
     </form>
   );
 }
