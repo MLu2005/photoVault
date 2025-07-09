@@ -54,7 +54,10 @@ module.exports = async function (context, req) {
   const stream = fs.createReadStream(file.path);
   const stat = fs.statSync(file.path);
 
-  await blockBlobClient.uploadStream(stream, stat.size);
+  await blockBlobClient.uploadStream(stream, 4 * 1024 * 1024, 5, {
+  blobHTTPHeaders: { blobContentType: file.headers["content-type"] }
+  });
+
 
   context.res = {
     status: 200,
