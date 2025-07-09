@@ -1,9 +1,5 @@
-const { IncomingForm } = require("formidable");
-const {
-  BlobServiceClient,
-  StorageSharedKeyCredential,
-} = require("@azure/storage-blob");
-const fs = require("fs");
+const { BlobServiceClient, StorageSharedKeyCredential } = require("@azure/storage-blob");
+const Busboy = require("busboy");
 
 const account = process.env.AZURE_STORAGE_ACCOUNT;
 const key = process.env.AZURE_STORAGE_KEY;
@@ -20,39 +16,47 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const form = new IncomingForm();
-    const data = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
+    const busboy = new Busboy({ headers: req.headers });
+    const buffers = [];
+    let filename = "";
+    let eventName = "";
+
+    await new Promise((resolve, reject) => {
+      busboy.on("file", (fieldname, file, _filename, encoding, mimetype) => {
+        filename = _filename;
+        file.on("data", (data) => buffers.push(data));
       });
+
+      busboy.on("field", (fieldname, val) => {
+        if (fieldname === "event") eventName = val;
+      });
+
+      busboy.on("finish", resolve);
+      busboy.on("error", reject);
+
+      req.pipe(busboy); // kluczowe – Azure Functions obsługuje stream
     });
 
-    const event = data.fields?.event?.[0];
-    const file = data.files?.file?.[0];
-
-    if (!event || !file) {
-      context.res = { status: 400, body: "Missing event or file" };
+    if (!eventName || !filename) {
+      context.res = { status: 400, body: "Missing event name or file" };
       return;
     }
 
-    const blobName = `${event}/${Date.now()}_${file.originalFilename}`;
+    const blobName = `${eventName}/${Date.now()}_${filename}`;
+    const buffer = Buffer.concat(buffers);
+
     const credential = new StorageSharedKeyCredential(account, key);
-    const blobServiceClient = new BlobServiceClient(
-      `https://${account}.blob.core.windows.net`,
-      credential
-    );
+    const blobServiceClient = new BlobServiceClient(`https://${account}.blob.core.windows.net`, credential);
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    const stream = fs.createReadStream(file.filepath);
-    const stat = fs.statSync(file.filepath);
-
-    await blockBlobClient.uploadStream(stream, stat.size);
+    await blockBlobClient.uploadData(buffer, {
+      blobHTTPHeaders: { blobContentType: "image/jpeg" }, // możesz poprawić typ MIME
+    });
 
     context.res = {
       status: 200,
-      body: { message: "Uploaded", blobName },
+      body: { message: "Upload complete", blobName },
     };
   } catch (err) {
     context.log.error("❌ Upload failed", err);
@@ -62,5 +66,3 @@ module.exports = async function (context, req) {
     };
   }
 };
-
-// force redeploy
