@@ -1,59 +1,59 @@
-const { BlobServiceClient, StorageSharedKeyCredential } = require("@azure/storage-blob");
-const Busboy = require("busboy");
+const formidable = require("formidable");
+const {
+  BlobServiceClient,
+  StorageSharedKeyCredential,
+} = require("@azure/storage-blob");
+const fs = require("fs");
 
 const account = process.env.AZURE_STORAGE_ACCOUNT;
 const key = process.env.AZURE_STORAGE_KEY;
 const containerName = "fullsize";
+const allowedUserId = "df853e4c8f6849c397f13b8c3bbffdae";
 
 module.exports = async function (context, req) {
+  context.log("📩 uploadPhoto triggered");
+
   try {
+    // 🔐 Autoryzacja GitHub userId
     const principal = req.headers["x-ms-client-principal"];
     const auth = principal && JSON.parse(Buffer.from(principal, "base64").toString());
     const userId = auth?.userId;
 
-    if (userId !== "df853e4c8f6849c397f13b8c3bbffdae") {
+    if (userId !== allowedUserId) {
       context.res = { status: 401, body: "Unauthorized" };
       return;
     }
 
-    const busboy = new Busboy({ headers: req.headers });
-    const buffers = [];
-    let filename = "";
-    let eventName = "";
+    // 🧱 Parsowanie multipart/form-data
+    const form = new formidable.IncomingForm({ multiples: false });
 
-    await new Promise((resolve, reject) => {
-      busboy.on("file", (fieldname, file, _filename, encoding, mimetype) => {
-        filename = _filename;
-        file.on("data", (data) => buffers.push(data));
+    const data = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        else resolve({ fields, files });
       });
-
-      busboy.on("field", (fieldname, val) => {
-        if (fieldname === "event") eventName = val;
-      });
-
-      busboy.on("finish", resolve);
-      busboy.on("error", reject);
-
-      req.pipe(busboy); // kluczowe – Azure Functions obsługuje stream
     });
 
-    if (!eventName || !filename) {
-      context.res = { status: 400, body: "Missing event name or file" };
+    const event = data.fields?.event;
+    const file = data.files?.file;
+
+    if (!event || !file) {
+      context.res = { status: 400, body: "Missing event or file" };
       return;
     }
 
-    const blobName = `${eventName}/${Date.now()}_${filename}`;
-    const buffer = Buffer.concat(buffers);
-
+    const blobName = `${event}/${Date.now()}_${file.originalFilename}`;
     const credential = new StorageSharedKeyCredential(account, key);
     const blobServiceClient = new BlobServiceClient(`https://${account}.blob.core.windows.net`, credential);
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    await blockBlobClient.uploadData(buffer, {
-      blobHTTPHeaders: { blobContentType: "image/jpeg" }, // możesz poprawić typ MIME
-    });
+    const stream = fs.createReadStream(file.filepath);
+    const stat = fs.statSync(file.filepath);
 
+    await blockBlobClient.uploadStream(stream, stat.size);
+
+    context.log("✅ Uploaded:", blobName);
     context.res = {
       status: 200,
       body: { message: "Upload complete", blobName },
