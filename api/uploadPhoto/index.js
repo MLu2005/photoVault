@@ -1,8 +1,9 @@
-const formidable = require("formidable");
+const { IncomingForm } = require("formidable");
 const {
   BlobServiceClient,
   StorageSharedKeyCredential,
 } = require("@azure/storage-blob");
+const fs = require("fs");
 
 const account = process.env.AZURE_STORAGE_ACCOUNT;
 const key = process.env.AZURE_STORAGE_KEY;
@@ -25,7 +26,7 @@ module.exports = async function (context, req) {
     }
 
     // 📥 Parsowanie formularza
-    const form = formidable({ multiples: false });
+    const form = new IncomingForm({ multiples: false });
     const data = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) reject(err);
@@ -33,8 +34,8 @@ module.exports = async function (context, req) {
       });
     });
 
-    const event = data.fields?.event;
-    const file = data.files?.file;
+    const event = data.fields?.event?.[0];
+    const file = data.files?.file?.[0];
 
     if (!event || !file) {
       context.log("❌ Missing event or file in request");
@@ -54,7 +55,6 @@ module.exports = async function (context, req) {
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    const fs = require("fs");
     const stream = fs.createReadStream(file.filepath);
     const stat = fs.statSync(file.filepath);
 
