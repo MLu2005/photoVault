@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import GlobalNavbar from "../GlobalNavbar";
@@ -5,13 +6,22 @@ import NewEventForm from "./NewEventForm";
 
 const ALLOWED_ID = "df853e4c8f6849c397f13b8c3bbffdae";
 
-const events = [
-  "Amsterdam", "Belgium", "Berlin", "Climbing", "Cooking", "Gala",
-  "Maastricht", "Monschau", "Music", "StPeters", "Valkenburg"
-];
-
 export default function PrivateLayout() {
   const user = useAuth();
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch("/api/getEventsList");
+        const data = await res.json();
+        setEvents(data);
+      } catch (err) {
+        console.error("Failed to load events", err);
+      }
+    }
+    fetchEvents();
+  }, []);
 
   if (user === null) {
     return (
@@ -40,8 +50,7 @@ export default function PrivateLayout() {
       <GlobalNavbar />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-white">Private Gallery</h1>
-        {/* ✔️ Formularz tworzenia eventu */}
-        <div className="text-sm text-gray-400 text-right max-w-xs" title="In Azure folders exist only when files are added to them. Add at least one photo.">
+        <div className="text-sm text-gray-400 text-right max-w-xs">
           <NewEventForm />
         </div>
       </div>
