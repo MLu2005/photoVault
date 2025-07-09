@@ -12,28 +12,38 @@ export default function UploadForm() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("event", event);
-    formData.append("file", file);
-
-    setStatus("uploading");
+    setStatus("getting-url");
 
     try {
-      const res = await fetch("/api/uploadPhoto", {
-        method: "POST",
-        body: formData,
+      // 1. Pobierz tymczasowy upload URL (SAS)
+      const res = await fetch(`/api/getUploadUrl?event=${event}&filename=${encodeURIComponent(file.name)}`);
+      if (!res.ok) throw new Error("Could not get upload URL");
+
+      const { uploadUrl, blobName } = await res.json();
+
+      // 2. Upload bezpośrednio do Azure Blob Storage
+      setStatus("uploading");
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "x-ms-blob-type": "BlockBlob",
+          "Content-Type": file.type
+        },
+        body: file
       });
 
-      if (res.ok) {
-        setStatus("success");
-        setEvent("");
-        setFile(null);
-        e.target.reset(); // czyści formularz
-      } else {
-        const text = await res.text();
-        console.error("Upload failed:", text);
-        setStatus("error");
-      }
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      setStatus("success");
+      setEvent("");
+      setFile(null);
+      e.target.reset();
+
+      // 3. (Opcjonalnie) przekierowanie po uploadzie
+      setTimeout(() => {
+        window.location.href = `/private/${event}`;
+      }, 1000);
+
     } catch (err) {
       console.error("Upload error:", err);
       setStatus("error");
@@ -79,8 +89,11 @@ export default function UploadForm() {
       {status === "missing" && (
         <p className="text-yellow-400">Please provide both event name and photo.</p>
       )}
+      {status === "getting-url" && (
+        <p className="text-blue-300">Requesting upload URL...</p>
+      )}
       {status === "uploading" && (
-        <p className="text-blue-300">Uploading...</p>
+        <p className="text-blue-300">Uploading photo...</p>
       )}
       {status === "success" && (
         <p className="text-green-400">Upload successful! 🎉</p>
