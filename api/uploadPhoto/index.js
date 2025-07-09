@@ -1,4 +1,4 @@
-const { IncomingForm } = require("formidable");
+const formidable = require("formidable");
 const {
   BlobServiceClient,
   StorageSharedKeyCredential,
@@ -20,7 +20,7 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const form = new IncomingForm({ multiples: false });
+    const form = new formidable.IncomingForm();
     const data = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) reject(err);
