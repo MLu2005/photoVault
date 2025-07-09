@@ -1,4 +1,4 @@
-const formidable = require("formidable");
+const { IncomingForm } = require("formidable");
 const {
   BlobServiceClient,
   StorageSharedKeyCredential,
@@ -20,7 +20,7 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const form = new formidable.IncomingForm();
+    const form = new IncomingForm();
     const data = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) reject(err);
@@ -62,3 +62,5 @@ module.exports = async function (context, req) {
     };
   }
 };
+
+// force redeploy
