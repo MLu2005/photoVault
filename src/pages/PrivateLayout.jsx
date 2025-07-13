@@ -57,13 +57,38 @@ export default function PrivateLayout() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {events.map((event) => (
-          <Link
+          <div
             key={event}
-            to={`/private/${event}`}
-            className="bg-white bg-opacity-10 rounded-xl p-6 text-white hover:bg-opacity-20 transition text-center"
+            className="relative bg-white bg-opacity-10 rounded-xl p-6 text-white hover:bg-opacity-20 transition text-center"
           >
-            {event}
-          </Link>
+            <Link to={`/private/${event}`}>
+              {event}
+            </Link>
+            <button
+              onClick={async () => {
+                const confirm = prompt(`Type "TAK" to delete event "${event}"`);
+                if (confirm !== "TAK") return;
+
+                try {
+                  const res = await fetch(`/api/deleteEvent?event=${event}`, {
+                    method: "DELETE",
+                  });
+                  if (res.ok) {
+                    setEvents((prev) => prev.filter((e) => e !== event));
+                  } else {
+                    alert("Failed to delete event.");
+                  }
+                } catch (err) {
+                  console.error("Delete event error:", err);
+                  alert("Error deleting event.");
+                }
+              }}
+              className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700"
+              title="Delete event"
+            >
+              🗑
+            </button>
+          </div>
         ))}
       </div>
     </div>
