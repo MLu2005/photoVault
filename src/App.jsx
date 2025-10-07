@@ -10,9 +10,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Hero />} />
         <Route path="/public" element={<PublicLayout />} />
-        <Route path="/private" element={<PrivateLayout />} />
-        <Route path="/public/:event" element={<EventGallery />} />
-        <Route path="/private/:event" element={<EventGallery />} />
+          <Route path="/public/:event" element={<EventGallery isPrivate={false} />} />
+          <Route path="/private/:event" element={<EventGallery isPrivate={true}  />} />
+          <Route path="/private" element={<PrivateLayout />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,16 +1,42 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import useAuth from "../hooks/useAuth";
 import GlobalNavbar from "../GlobalNavbar";
 
 export default function EventGallery({ isPrivate }) {
   const { event } = useParams();
-  const [photos, setPhotos] = useState([]);
-  const [file, setFile] = useState(null);
+  const location = useLocation();
   const user = useAuth();
 
-  // --- Auth gating for private view ---
-  if (isPrivate && user === null) {
+  // Jeśli prop nie został przekazany, rozpoznaj po ścieżce URL
+  const isPrivateView =
+      typeof isPrivate === "boolean" ? isPrivate : location.pathname.startsWith("/private");
+
+  const [photos, setPhotos] = useState([]);
+  const [file, setFile] = useState(null);
+  const [status, setStatus] = useState("idle"); // idle | loading | uploading | deleting | error
+
+  async function loadPhotos() {
+    try {
+      setStatus("loading");
+      const res = await fetch(`/api/getPhotosByEvent?event=${encodeURIComponent(event)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const urls = await res.json();
+      setPhotos(urls);
+      setStatus("idle");
+    } catch (err) {
+      console.error("❌ Error fetching photos:", err);
+      setStatus("error");
+    }
+  }
+
+  useEffect(() => {
+    loadPhotos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event]);
+
+  // W prywatnym widoku pokaż ekran "Checking login..." dopóki SWA nie zwróci usera
+  if (isPrivateView && user === null) {
     return (
         <div className="min-h-screen bg-black text-white flex items-center justify-center">
           <p className="text-lg text-gray-300 animate-pulse">Checking login...</p>
@@ -18,167 +44,145 @@ export default function EventGallery({ isPrivate }) {
     );
   }
 
-  if (
-      isPrivate &&
-      (!user ||
-          user.identityProvider !== "github" ||
-          user.userId !== "df853e4c8f6849c397f13b8c3bbffdae")
-  ) {
-    return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center text-center p-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-4">Access Denied</h1>
-            <p className="mb-6">You are not authorized to view this gallery.</p>
-            <a
-                href="/"
-                className="block border border-white px-6 py-2 rounded-xl font-semibold hover:bg-white hover:text-black transition"
-            >
-              Return to Homepage
-            </a>
-          </div>
-        </div>
-    );
-  }
-
-  // --- Load photos ---
-  async function fetchPhotos() {
-    try {
-      const res = await fetch(
-          `/api/getPhotosByEvent?event=${encodeURIComponent(event)}`
-      );
-      const urls = await res.json();
-      setPhotos(urls);
-    } catch (err) {
-      console.error("Error fetching photos:", err);
-    }
-  }
-
-  useEffect(() => {
-    fetchPhotos();
-  }, [event]);
-
-  // --- Upload photo handler ---
-  async function handleUpload(e) {
-    e.preventDefault();
-    if (!file) return;
-
-    try {
-      const r = await fetch(
-          `/api/getUploadUrl?event=${encodeURIComponent(
-              event
-          )}&filename=${encodeURIComponent(file.name)}`
-      );
-      if (!r.ok) {
-        alert("Nie udało się pobrać URL-a uploadu");
-        return;
-      }
-
-      const { uploadUrl } = await r.json();
-
-      const up = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "x-ms-blob-type": "BlockBlob",
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        body: file,
-      });
-
-      if (!up.ok) {
-        alert("Upload nie powiódł się");
-        return;
-      }
-
-      await fetchPhotos();
-      setFile(null);
-    } catch (err) {
-      console.error("Upload error:", err);
-      alert("Błąd uploadu zdjęcia");
-    }
-  }
-
   return (
       <div className="min-h-screen bg-black text-white">
         <GlobalNavbar />
         <main className="p-6">
           <h1 className="text-3xl font-bold mb-6">
-            {isPrivate ? "Private" : "Public"} Gallery: {event}
+            {isPrivateView ? "Private" : "Public"} Gallery: {event}
           </h1>
 
-          {/* --- Inline uploader (private only) --- */}
-          {isPrivate && (
-              <form className="mb-6 flex items-center gap-3" onSubmit={handleUpload}>
+          {/* Mini-uploader dostępny tylko w prywatnym widoku */}
+          {isPrivateView && (
+              <form
+                  className="mb-6 flex items-center gap-3"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!file) return;
+                    try {
+                      setStatus("uploading");
+                      // 1) poproś o SAS do uploadu dla tego eventu
+                      const r = await fetch(
+                          `/api/getUploadUrl?event=${encodeURIComponent(event)}&filename=${encodeURIComponent(file.name)}`
+                      );
+                      if (!r.ok) throw new Error(`getUploadUrl HTTP ${r.status}`);
+                      const { uploadUrl } = await r.json();
+
+                      // 2) wrzuć plik do Bloba
+                      const up = await fetch(uploadUrl, {
+                        method: "PUT",
+                        headers: {
+                          "x-ms-blob-type": "BlockBlob",
+                          "Content-Type": file.type || "application/octet-stream",
+                        },
+                        body: file,
+                      });
+                      if (!up.ok) throw new Error(`upload HTTP ${up.status}`);
+
+                      setFile(null);
+                      await loadPhotos(); // 3) świeże SAS-y z serwera
+                      setStatus("idle");
+                    } catch (err) {
+                      console.error("❌ Upload error:", err);
+                      setStatus("error");
+                      alert("Błąd uploadu zdjęcia");
+                    }
+                  }}
+              >
                 <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setFile(e.target.files[0] || null)}
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
                     className="block text-sm"
                 />
                 <button
                     type="submit"
                     className="bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition"
+                    disabled={status === "uploading"}
                 >
-                  Dodaj zdjęcie
+                  {status === "uploading" ? "Wgrywanie..." : "Dodaj zdjęcie"}
                 </button>
               </form>
           )}
 
-          {/* --- Photos grid --- */}
-          {photos.length === 0 ? (
-              <p className="text-gray-400 text-center mt-20">
-                {isPrivate ? "Brak zdjęć w tym evencie." : "No photos available."}
-              </p>
-          ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {photos.map((url, index) => {
-                  // --- Robust blobName extraction ---
-                  const u = new URL(url, window.location.origin);
-                  const pathname = decodeURIComponent(u.pathname.replace(/^\/+/, ""));
-                  const [, ...rest] = pathname.split("/"); // remove container segment
-                  const blobName = rest.join("/"); // "event/file.jpg"
+          {/* Siatka zdjęć */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {photos.map((url, index) => {
+              // Robust: wylicz blobName z URL, niezależnie od hosta/CDN
+              // np. https://<acct>.blob.core.windows.net/fullsize/event/file.jpg?... -> event/file.jpg
+              let blobName = "";
+              try {
+                const u = new URL(url);
+                const pathname = decodeURIComponent(u.pathname); // /fullsize/event/file.jpg
+                blobName = pathname.replace(/^\/?fullsize\//, ""); // event/file.jpg
+              } catch {
+                // fallback – w mało prawdopodobnym razie, gdy URL jest względny
+                const noQuery = url.split("?")[0];
+                const afterContainer = noQuery.split("/").slice(4).join("/");
+                blobName = decodeURIComponent(afterContainer);
+              }
 
-                  return (
-                      <div key={index} className="relative group">
-                        <img
-                            src={url}
-                            alt={`photo-${index}`}
-                            className="rounded-lg"
-                            loading="lazy"
-                        />
-                        {isPrivate && (
-                            <button
-                                onClick={async () => {
-                                  const ok = window.confirm("Delete this photo?");
-                                  if (!ok) return;
+              return (
+                  <div key={index} className="relative group">
+                    <img
+                        src={url}
+                        alt={`photo-${index}`}
+                        className="rounded-lg"
+                        loading="lazy"
+                    />
 
-                                  try {
-                                    const res = await fetch(
-                                        `/api/deletePhoto?blobName=${encodeURIComponent(
-                                            blobName
-                                        )}`,
-                                        { method: "DELETE" }
-                                    );
+                    {/* Kasowanie dostępne tylko w prywatnym widoku */}
+                    {isPrivateView && (
+                        <button
+                            onClick={async () => {
+                              const ok = window.confirm("Delete this photo?");
+                              if (!ok) return;
+                              try {
+                                setStatus("deleting");
+                                const res = await fetch(
+                                    `/api/deletePhoto?blobName=${encodeURIComponent(blobName)}`,
+                                    { method: "DELETE" }
+                                );
+                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                await loadPhotos(); // odśwież po usunięciu
+                                setStatus("idle");
+                              } catch (err) {
+                                console.error("❌ Delete error:", err);
+                                setStatus("error");
+                                alert("Error deleting photo.");
+                              }
+                            }}
+                            // zawsze widoczny (nie tylko na :hover), żeby nie „znikał” na mobile
+                            className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded transition"
+                            title="Delete photo"
+                        >
+                          🗑
+                        </button>
+                    )}
+                  </div>
+              );
+            })}
+          </div>
 
-                                    if (res.ok) {
-                                      await fetchPhotos();
-                                    } else {
-                                      alert("Failed to delete photo.");
-                                    }
-                                  } catch (err) {
-                                    console.error("Delete error:", err);
-                                    alert("Error deleting photo.");
-                                  }
-                                }}
-                                className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition"
-                            >
-                              🗑
-                            </button>
-                        )}
-                      </div>
-                  );
-                })}
-              </div>
+          {/* status / błędy */}
+          {status === "loading" && (
+              <p className="mt-4 text-sm text-gray-300">Ładowanie zdjęć…</p>
           )}
+          {status === "error" && (
+              <p className="mt-4 text-sm text-red-400">
+                Coś poszło nie tak. Sprawdź konsolę przeglądarki.
+              </p>
+          )}
+
+          {/* Nawigacja powrotna */}
+          <div className="mt-8">
+            <Link
+                to={isPrivateView ? "/private" : "/public"}
+                className="inline-block border border-white px-6 py-2 rounded-xl font-semibold hover:bg-white hover:text-black transition"
+            >
+              Return to Homepage
+            </Link>
+          </div>
         </main>
       </div>
   );
