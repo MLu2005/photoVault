@@ -1,17 +1,12 @@
 {
-  "name": "api",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "name": "photo-vault-api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": "22.x"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@azure/storage-blob": "^12.27.0",
-    "formidable": "^2.1.1",
-    "multiparty": "^4.2.3"
+    "@azure/storage-blob": "12.27.0"
   }
 }
