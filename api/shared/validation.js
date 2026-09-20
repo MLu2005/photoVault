@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const { fail } = require('./errors');
-const TYPES = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp', gif:'image/gif', avif:'image/avif', heic:'image/heic', heif:'image/heif', tif:'image/tiff', tiff:'image/tiff', mp4:'video/mp4', m4v:'video/mp4', mov:'video/quicktime', webm:'video/webm', ogv:'video/ogg', mkv:'video/x-matroska', avi:'video/x-msvideo', '3gp':'video/3gpp' };
+const TYPES = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp', gif:'image/gif', avif:'image/avif', heic:'image/heic', heif:'image/heif', dng:'image/x-adobe-dng', tif:'image/tiff', tiff:'image/tiff', mp4:'video/mp4', m4v:'video/mp4', mov:'video/quicktime', webm:'video/webm', ogv:'video/ogg', mkv:'video/x-matroska', avi:'video/x-msvideo', '3gp':'video/3gpp' };
 const MARKER = '.pv-album.json';
 function albumName(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 120 || value !== value.trim() ||

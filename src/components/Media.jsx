@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Icon from './Icon.jsx';
 import { bytes, extension } from '../lib/format.js';
 export function Preview({ item, className = '' }) {
-  const source = item.thumbnailUrl || (item.kind === 'image' && !['HEIC','HEIF','TIF','TIFF'].includes(extension(item.name)) ? item.url : null);
+  const source = item.thumbnailUrl || (item.kind === 'image' && !['HEIC','HEIF','DNG','TIF','TIFF'].includes(extension(item.name)) ? item.url : null);
   const [failed, setFailed] = useState(false), [fallback, setFallback] = useState(false);
   useEffect(() => { setFailed(false); setFallback(false); }, [source]);
   const src = fallback ? (item.kind === 'image' ? item.url : null) : source;
