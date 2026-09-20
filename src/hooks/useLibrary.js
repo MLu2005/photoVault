@@ -16,11 +16,11 @@ export function useLibrary(user) {
         if (seq !== sequence.current) return;
         page.items.forEach(item => found.set(item.blobName, item)); page.albums.forEach(name => names.add(name));
         setScanned(found.size); cursor = page.nextCursor;
-        if (cursor && seen.has(cursor)) throw new Error('Serwer powtórzył stronę wyników. Odśwież bibliotekę.');
+        if (cursor && seen.has(cursor)) throw new Error('The server returned the same results page twice. Refresh the library.');
         if (cursor) seen.add(cursor);
       } while (cursor);
       if (seq !== sequence.current) return;
-      setItems([...found.values()]); setAlbums([...names].sort((a,b) => a.localeCompare(b, 'pl'))); lastLoad.current = Date.now();
+      setItems([...found.values()]); setAlbums([...names].sort((a,b) => a.localeCompare(b, 'en-GB'))); lastLoad.current = Date.now();
     } catch (e) { if (e.name !== 'AbortError' && seq === sequence.current) setError(e.message); }
     finally { if (seq === sequence.current) setLoading(false); }
   }, [user]);

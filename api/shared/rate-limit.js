@@ -9,13 +9,13 @@ async function limitLogin(store, username, secret, now = Date.now()) {
     try { const data = await store.read(name); state = JSON.parse(data.text); etag = data.etag; }
     catch (error) { if (error.statusCode !== 404) throw error; }
     if (now - state.start >= 15 * 60000) state = { start: now, count: 0 };
-    if (state.count >= 8) fail(429, 'Za dużo prób logowania. Spróbuj ponownie za 15 minut.', 'RATE_LIMIT');
+    if (state.count >= 8) fail(429, 'Too many sign-in attempts. Try again in 15 minutes.', 'RATE_LIMIT');
     state.count++;
     try {
       await store.put(name, JSON.stringify(state), { conditions: etag ? { ifMatch: etag } : { ifNoneMatch: '*' } });
       return;
     } catch (error) { if (![409, 412].includes(error.statusCode)) throw error; }
   }
-  fail(429, 'Zbyt wiele jednoczesnych prób. Poczekaj chwilę.', 'RATE_LIMIT');
+  fail(429, 'Too many simultaneous attempts. Please wait a moment.', 'RATE_LIMIT');
 }
 module.exports = { limitLogin };

@@ -10,16 +10,16 @@ export async function api(endpoint, { method = 'GET', body, signal, timeout = 30
       headers: method === 'GET' ? { Accept:'application/json' } : { Accept:'application/json', 'Content-Type':'application/json', 'X-PV-Request':'1', ...(csrfToken ? { 'X-CSRF-Token':csrfToken } : {}) },
       ...(body === undefined ? {} : { body:JSON.stringify(body) }) });
     let data;
-    try { data = await response.json(); } catch { throw new Error('API nie zwróciło poprawnej odpowiedzi. Sprawdź wdrożenie funkcji.'); }
+    try { data = await response.json(); } catch { throw new Error('The API did not return a valid response. Check the Functions deployment.'); }
     if (!response.ok) {
       if (response.status === 401 && endpoint !== 'authLogin') window.dispatchEvent(new Event('pv:session-expired'));
-      const error = new Error(data.error || 'Operacja nie powiodła się.');
+      const error = new Error(data.error || 'The operation failed.');
       error.status = response.status; error.code = data.code; throw error;
     }
     return data;
   } catch (error) {
-    if (error.name === 'AbortError' && !signal?.aborted) throw new Error('Serwer odpowiada zbyt długo. Spróbuj ponownie.');
-    if (error instanceof TypeError) throw new Error('Brak połączenia z aplikacją. Sprawdź internet i spróbuj ponownie.');
+    if (error.name === 'AbortError' && !signal?.aborted) throw new Error('The server is taking too long to respond. Please try again.');
+    if (error instanceof TypeError) throw new Error('Cannot connect to the app. Check your internet connection and try again.');
     throw error;
   } finally { clearTimeout(timer); signal?.removeEventListener('abort', cancel); }
 }

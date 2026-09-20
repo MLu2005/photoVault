@@ -28,7 +28,7 @@ function handler(name, injectedStore) {
     context.res = { status: 200, headers: { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store',
       'Pragma':'no-cache', 'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'no-referrer' } };
     try {
-      if (req.method?.toUpperCase() !== METHODS[name]) fail(405, 'Niedozwolona metoda.', 'METHOD_NOT_ALLOWED');
+      if (req.method?.toUpperCase() !== METHODS[name]) fail(405, 'Method not allowed.', 'METHOD_NOT_ALLOWED');
       const config = authConfig();
       const body = req.body || {}, query = req.query || {};
       if (!['authLogin', 'authSession'].includes(name)) session = requireSession(req, config);
@@ -43,12 +43,12 @@ function handler(name, injectedStore) {
       }
       const store = injectedStore || getStore();
       if (name === 'authLogin') {
-        if (typeof body.username !== 'string' || typeof body.password !== 'string' || body.password.length > 256 || body.username.length > 40) fail(400, 'Podaj nazwę użytkownika i hasło.');
+        if (typeof body.username !== 'string' || typeof body.password !== 'string' || body.password.length > 256 || body.username.length > 40) fail(400, 'Enter a username and password.');
         const user = config.users.find(u => u.username === body.username.trim().toLowerCase());
         await limitLogin(store, user ? user.username : '__unknown', config.secret);
         // Dummy verification avoids a fast path for unknown usernames.
         const valid = await verifyPassword(body.password, (user || config.users[0]).passwordHash);
-        if (!user || !valid) fail(401, 'Nieprawidłowa nazwa użytkownika lub hasło.', 'INVALID_CREDENTIALS');
+        if (!user || !valid) fail(401, 'Invalid username or password.', 'INVALID_CREDENTIALS');
         const result = createSession(user, config);
         context.res.headers['Set-Cookie'] = result.cookie;
         context.res.body = { user: publicSession({ ...result.session, displayName: user.displayName || user.username }), limits:limits() }; return;
@@ -78,7 +78,7 @@ function handler(name, injectedStore) {
       }
       if (name === 'getUploadUrl') {
         const blobName = v.uploadName(body.event, body.filename, body.uploadId);
-        if (!Number.isSafeInteger(body.size) || body.size <= 0 || body.size > limits().maxUploadBytes) fail(400, 'Plik jest pusty lub przekracza limit rozmiaru.', 'FILE_SIZE');
+        if (!Number.isSafeInteger(body.size) || body.size <= 0 || body.size > limits().maxUploadBytes) fail(400, 'The file is empty or exceeds the size limit.', 'FILE_SIZE');
         const link = store.url(blobName, { write:true });
         context.res.body = { blobName, uploadUrl:link.url, thumbnailUploadUrl:store.url(v.thumbnailName(blobName), { write:true }).url,
           expiresAt:link.expiresAt, contentType:v.contentType(body.filename), maxUploadBytes:limits().maxUploadBytes }; return;
@@ -86,7 +86,7 @@ function handler(name, injectedStore) {
       if (name === 'completeUpload') {
         const blobName = v.mediaName(body.blobName);
         const props = await store.properties(blobName);
-        if (!v.isMedia(blobName) || !props.contentLength || props.contentLength > limits().maxUploadBytes) fail(400, 'Nieprawidłowy przesłany plik.', 'FILE_SIZE');
+        if (!v.isMedia(blobName) || !props.contentLength || props.contentLength > limits().maxUploadBytes) fail(400, 'The uploaded file is invalid.', 'FILE_SIZE');
         let thumb = false;
         if (body.thumbnail === true) {
           try { const p = await store.properties(v.thumbnailName(blobName)); thumb = p.contentType === 'image/jpeg' && p.contentLength <= 1024 * 1024; }
@@ -98,7 +98,7 @@ function handler(name, injectedStore) {
       }
       if (name === 'updateMedia') {
         const blobName = v.mediaName(body.blobName);
-        if (typeof body.favorite !== 'boolean' && body.restore !== true) fail(400, 'Brak zmiany do zapisania.');
+        if (typeof body.favorite !== 'boolean' && body.restore !== true) fail(400, 'There is no change to save.');
         await mutateMetadata(store, blobName, m => {
           if (body.restore === true) delete m.pv_trashed;
           if (typeof body.favorite === 'boolean') m.pv_favorite = String(body.favorite);
@@ -110,7 +110,7 @@ function handler(name, injectedStore) {
         const blobName = v.mediaName(body.blobName);
         if (body.permanent === true) {
           const props = await store.properties(blobName);
-          if (!props.metadata?.pv_trashed) fail(409, 'Najpierw przenieś plik do kosza.', 'NOT_TRASHED');
+          if (!props.metadata?.pv_trashed) fail(409, 'Move the file to trash first.', 'NOT_TRASHED');
           await store.remove(v.thumbnailName(blobName));
           await store.remove(blobName);
         } else { await mutateMetadata(store, blobName, m => ({ ...m, pv_trashed:m.pv_trashed || new Date().toISOString() })); }
@@ -127,7 +127,7 @@ function handler(name, injectedStore) {
             await mutateMetadata(store, blob.name, m => ({ ...m, pv_trashed:m.pv_trashed || new Date().toISOString() }));
           }
         }));
-        if (outcomes.some(o => o.status === 'rejected')) fail(503, 'Część plików przeniesiono. Ponów operację, aby dokończyć.', 'PARTIAL_OPERATION');
+        if (outcomes.some(o => o.status === 'rejected')) fail(503, 'Some files were moved. Retry the operation to finish.', 'PARTIAL_OPERATION');
         context.res.body = { moved:media.length, nextCursor:page.cursor }; return;
       }
       if (name === 'getMediaLink') {
@@ -135,11 +135,11 @@ function handler(name, injectedStore) {
         await store.properties(blobName);
         context.res.body = store.url(blobName, { download:body.download === true, filename:v.displayName(blobName) }); return;
       }
-      fail(404, 'Nie znaleziono operacji.');
+      fail(404, 'Operation not found.');
     } catch (error) {
       const status = error.status || (error.statusCode === 404 ? 404 : error.statusCode === 412 ? 409 : 500);
       context.res.status = status;
-      context.res.body = { error:status === 500 ? 'Operacja nie powiodła się. Spróbuj ponownie.' : (error.status ? error.message : status === 404 ? 'Plik nie istnieje.' : 'Plik zmienił się. Odśwież bibliotekę.'), code:error.code || 'REQUEST_FAILED' };
+      context.res.body = { error:status === 500 ? 'The operation failed. Please try again.' : (error.status ? error.message : status === 404 ? 'The file does not exist.' : 'The file changed. Refresh the library.'), code:error.code || 'REQUEST_FAILED' };
       if (status === 429) context.res.headers['Retry-After'] = '900';
       if (status === 405) context.res.headers.Allow = METHODS[name];
       // Never log req.body, SAS URLs, cookies, password hashes or full Azure error objects.

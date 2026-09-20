@@ -3,15 +3,15 @@ export const ACCEPT = Object.keys(MIME).map(e => `.${e}`).join(',');
 export function bytes(value = 0) {
   if (!value) return '0 B';
   const n = Math.min(Math.floor(Math.log(value) / Math.log(1024)), 4);
-  return `${new Intl.NumberFormat('pl-PL', { maximumFractionDigits:n > 1 ? 1 : 0 }).format(value / 1024 ** n)} ${['B','KB','MB','GB','TB'][n]}`;
+  return `${new Intl.NumberFormat('en-GB', { maximumFractionDigits:n > 1 ? 1 : 0 }).format(value / 1024 ** n)} ${['B','KB','MB','GB','TB'][n]}`;
 }
 export function date(value, options = {}) {
   const d = new Date(value);
-  return Number.isNaN(d.valueOf()) ? 'Brak daty' : new Intl.DateTimeFormat('pl-PL', { day:'numeric', month:'long', year:'numeric', ...options }).format(d);
+  return Number.isNaN(d.valueOf()) ? 'No date' : new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'long', year:'numeric', ...options }).format(d);
 }
 export function month(value) {
   const d = new Date(value);
-  return Number.isNaN(d.valueOf()) ? 'Pozostałe' : new Intl.DateTimeFormat('pl-PL', { month:'long', year:'numeric' }).format(d);
+  return Number.isNaN(d.valueOf()) ? 'Other' : new Intl.DateTimeFormat('en-GB', { month:'long', year:'numeric' }).format(d);
 }
 export function extension(name) { return name.split('.').pop().toUpperCase(); }
 export async function mapSettled(items, limit, action) {
@@ -22,5 +22,5 @@ export async function mapSettled(items, limit, action) {
   return results;
 }
 
-const plural = new Intl.PluralRules('pl');
+const plural = new Intl.PluralRules('en');
 export function counted(n, one, few, many) { return `${n} ${{one, few, many}[plural.select(n)] || many}`; }

@@ -35,14 +35,14 @@ export class UploadQueue {
     const signal = job.controller.signal;
     try {
       const { api, uploadBlob, thumbnail } = this.transport;
-      job.stage = 'Przygotowanie'; this.emit();
+      job.stage = 'Preparing'; this.emit();
       job.ticket = await api('getUploadUrl', { method:'POST', body:{ event:job.album, filename:job.name, size:job.size, uploadId:job.id }, signal });
       if (!job.originalUploaded) {
-        job.stage = 'Przesyłanie'; this.emit();
+        job.stage = 'Uploading'; this.emit();
         await uploadBlob(job.ticket.uploadUrl, job.file, { contentType:job.type, signal, onProgress:n => { job.loaded = n; this.emit(); } });
         job.originalUploaded = true;
       }
-      job.stage = 'Zapisywanie podglądu'; this.emit();
+      job.stage = 'Saving preview'; this.emit();
       let hasThumbnail = false;
       try {
         const preview = await thumbnail(job.file, job.type, signal);
@@ -50,17 +50,17 @@ export class UploadQueue {
           await uploadBlob(job.ticket.thumbnailUploadUrl, preview, { contentType:'image/jpeg', signal }); hasThumbnail = true;
         }
       } catch (error) { if (error.name === 'AbortError') throw error; /* Original remains usable without a thumbnail. */ }
-      job.stage = 'Finalizowanie'; this.emit();
+      job.stage = 'Finalizing'; this.emit();
       await api('completeUpload', { method:'POST', body:{ blobName:job.ticket.blobName, thumbnail:hasThumbnail }, signal });
       job.status = 'done'; job.loaded = job.size; job.file = null; job.ticket = null;
     } catch (error) {
       job.status = signal.aborted || error.name === 'AbortError' ? 'cancelled' : 'error';
-      job.error = job.status === 'cancelled' ? (job.originalUploaded ? 'Oryginał został już zapisany; anulowano finalizowanie.' : 'Przesyłanie anulowane.') : error.message;
+      job.error = job.status === 'cancelled' ? (job.originalUploaded ? 'The original file was already saved; finalization was cancelled.' : 'Upload cancelled.') : error.message;
     }
   }
   cancel(id) {
     const job = this.jobs.find(j => j.id === id); if (!job) return;
-    if (job.controller) job.controller.abort(); else if (job.status === 'queued') { job.status = 'cancelled'; job.error = 'Przesyłanie anulowane.'; }
+    if (job.controller) job.controller.abort(); else if (job.status === 'queued') { job.status = 'cancelled'; job.error = 'Upload cancelled.'; }
     this.emit();
   }
   cancelAll() { this.jobs.forEach(job => this.cancel(job.id)); }

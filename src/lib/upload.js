@@ -1,5 +1,5 @@
 const BLOCK = 4 * 1024 * 1024;
-export function abortError() { return new DOMException('Przesyłanie anulowane.', 'AbortError'); }
+export function abortError() { return new DOMException('Upload cancelled.', 'AbortError'); }
 function wait(ms, signal) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) { reject(abortError()); return; }
@@ -21,10 +21,10 @@ export function put(url, data, { headers = {}, signal, onProgress = () => {} } =
     xhr.upload.onprogress = e => onProgress(e.loaded);
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) { finish(); return; }
-      const error = new Error(xhr.status === 403 ? 'Link uploadu wygasł lub Storage odrzucił zapis. Wybierz Ponów.' : `Storage odrzucił przesyłanie (HTTP ${xhr.status}).`);
+      const error = new Error(xhr.status === 403 ? 'The upload link expired or Storage rejected the upload. Choose Retry.' : `Storage rejected the upload (HTTP ${xhr.status}).`);
       error.status = xhr.status; finish(error);
     };
-    xhr.onerror = xhr.ontimeout = () => { const e = new Error('Brak połączenia ze Storage. Sprawdź internet i reguły CORS.'); e.status = 0; finish(e); };
+    xhr.onerror = xhr.ontimeout = () => { const e = new Error('Cannot connect to Storage. Check your internet connection and CORS rules.'); e.status = 0; finish(e); };
     xhr.onabort = () => finish(abortError());
     signal?.addEventListener('abort', cancel, { once:true }); xhr.send(data);
   });
