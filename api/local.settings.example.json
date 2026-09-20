@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "",
+    "AZURE_STORAGE_ACCOUNT": "YOUR_EXISTING_ACCOUNT",
+    "AZURE_STORAGE_KEY": "YOUR_EXISTING_KEY",
+    "AZURE_STORAGE_CONTAINER": "fullsize",
+    "PV_APP_ORIGIN": "http://127.0.0.1:5173",
+    "PV_SESSION_SECRET": "GENERATE_USING_NPM_RUN_SETUP",
+    "PV_USERS": "GENERATE_USING_NPM_RUN_SETUP",
+    "PV_DEV_HTTP": "true",
+    "PV_MAX_UPLOAD_MB": "1024",
+    "PV_SESSION_DAYS": "7"
+  }
+}

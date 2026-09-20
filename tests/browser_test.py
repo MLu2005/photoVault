@@ -1,0 +1,143 @@
+"""UI smoke tests against the LOOPBACK-ONLY tests/server.cjs, never production.
+Requirements: Python 3.10+, pip install playwright; python -m playwright install chromium.
+Run npm run build; node tests/server.cjs (separate terminal); npm run test:e2e.
+PV_BROWSER_EXECUTABLE can select an installed Chromium executable.
+"""
+import os
+import re
+import time
+from pathlib import Path
+from playwright.sync_api import sync_playwright, expect
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def exercise(page, output, fixtures):
+    page.set_default_timeout(12000)
+    page.set_viewport_size({"width":1440,"height":1000})
+    expect(page.locator('#username')).to_be_visible()
+    page.screenshot(path=str(output/'login-desktop.png'),full_page=True)
+    page.locator('#username').fill('tester')
+    page.locator('#password').fill('Integration-test-only!')
+    page.locator('.login-submit').click()
+    page.wait_for_selector('.media-card')
+    page.wait_for_timeout(400)
+    page.screenshot(path=str(output/'library-desktop.png'),full_page=True)
+    assert page.locator('.media-card').count() >= 4
+    print('PASS login + library',flush=True)
+    page.set_viewport_size({"width":390,"height":844})
+    page.screenshot(path=str(output/'library-mobile.png'),full_page=True)
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    page.set_viewport_size({"width":1440,"height":1000})
+    print('PASS responsive width',flush=True)
+    page.get_by_role('button',name='Widok listy',exact=True).click()
+    expect(page.locator('.media-row').first).to_be_visible()
+    page.get_by_role('button',name='Widok siatki',exact=True).click()
+    page.locator('.media-card .favorite-button:not(.is-favorite)').first.click()
+    expect(page.locator('.media-card .favorite-button.is-favorite').first).to_be_enabled()
+    page.locator('.sidebar nav .nav-item').filter(has_text='Ulubione').click()
+    assert page.locator('.media-card').count() >= 1
+    page.locator('.sidebar nav .nav-item').filter(has_text='Wszystkie wspomnienia').click()
+    search=page.get_by_role('textbox',name='Szukaj w bibliotece')
+    search.fill('no-file-with-this-name-xyz')
+    expect(page.locator('.empty-state')).to_be_visible()
+    search.fill('')
+    print('PASS list / favorites / search',flush=True)
+    page.locator('.media-card .media-open').filter(has=page.locator('.video-preview')).first.click()
+    expect(page.locator('dialog[open] video')).to_be_visible()
+    page.wait_for_function('document.querySelector("dialog video")?.readyState >= 1')
+    page.locator('dialog video').evaluate('(v)=>v.play()')
+    page.wait_for_function('document.querySelector("dialog video")?.currentTime > 0')
+    page.locator('dialog').get_by_role('button',name='Informacje o pliku').click()
+    expect(page.locator('.file-info')).to_be_visible()
+    page.screenshot(path=str(output/'video-viewer.png'))
+    page.locator('dialog').get_by_role('button',name='Zamknij',exact=True).click()
+    page.locator('.media-card .media-open').filter(has_not=page.locator('.video-preview')).first.click()
+    expect(page.locator('dialog[open] .lightbox-stage > img')).to_be_visible()
+    page.keyboard.press('ArrowRight')
+    page.keyboard.press('Escape')
+    expect(page.locator('dialog[open]')).to_have_count(0)
+    print('PASS video playback / photo viewer / keyboard',flush=True)
+    album='UI transfer '+str(int(time.time()))
+    page.get_by_role('button',name='Dodaj wspomnienia',exact=True).first.click()
+    page.locator('input[type=file]').set_input_files({'name':'unsupported.svg','mimeType':'image/svg+xml','buffer':b'<svg></svg>'})
+    page.get_by_role('button',name='Rozpocznij przesy\u0142anie',exact=True).click()
+    expect(page.locator('dialog [role=alert]')).to_be_visible()
+    page.locator('dialog').get_by_role('button',name='Wyczy\u015b\u0107',exact=True).click()
+    page.locator('input[type=file]').set_input_files([str(fixtures/'coffee.jpg'),str(fixtures/'rocket.jpg'),str(fixtures/'clip.mp4')])
+    page.locator('#upload-album').select_option('')
+    page.locator('#new-upload-album').fill(album)
+    page.screenshot(path=str(output/'upload-dialog.png'))
+    page.get_by_role('button',name='Rozpocznij przesy\u0142anie',exact=True).click()
+    expect(page.locator('.upload-panel')).to_contain_text('3 z 3 zapisanych',timeout=25000)
+    page.wait_for_timeout(900)
+    page.get_by_role('textbox',name='Szukaj w bibliotece').fill(album)
+    expect(page.locator('.media-card')).to_have_count(3)
+    print('PASS multiple images + MP4 + thumbnails + queue',flush=True)
+    # Each checkbox enables selection without opening the preview.
+    for checkbox in page.locator('.media-card input[type=checkbox]').all(): checkbox.check()
+    page.locator('.selection-bar').get_by_role('button',name='Do kosza',exact=True).click()
+    page.locator('dialog').get_by_role('button',name='Przenie\u015b do kosza',exact=True).click()
+    expect(page.locator('dialog[open]')).to_have_count(0)
+    page.locator('.sidebar .nav-item').filter(has_text=re.compile(r'^Kosz')).click()
+    page.get_by_role('textbox',name='Szukaj w bibliotece').fill(album)
+    expect(page.locator('.media-card')).to_have_count(3)
+    for checkbox in page.locator('.media-card input[type=checkbox]').all(): checkbox.check()
+    page.locator('.selection-bar').get_by_role('button',name='Przywr\u00f3\u0107',exact=True).click()
+    expect(page.locator('.media-card')).to_have_count(0)
+    print('PASS shared trash + bulk restore',flush=True)
+    page.locator('.sidebar nav .nav-item').filter(has_text='Albumy').click()
+    page.locator('.album-card').filter(has_text=album).click()
+    expect(page.locator('.media-card')).to_have_count(3)
+    page.get_by_role('button',name='Przenie\u015b zawarto\u015b\u0107 albumu do kosza',exact=True).click()
+    page.locator('dialog').get_by_role('button',name='Przenie\u015b do kosza',exact=True).click()
+    expect(page.locator('dialog[open]')).to_have_count(0)
+    expect(page.locator('.media-card')).to_have_count(0)
+    page.locator('.sidebar .nav-item').filter(has_text=re.compile(r'^Kosz')).click()
+    page.get_by_role('textbox',name='Szukaj w bibliotece').fill(album)
+    expect(page.locator('.media-card')).to_have_count(3)
+    for checkbox in page.locator('.media-card input[type=checkbox]').all(): checkbox.check()
+    page.locator('.selection-bar').get_by_role('button',name='Usu\u0144 trwale',exact=True).click()
+    page.locator('dialog').get_by_role('button',name='Usu\u0144 trwale',exact=True).click()
+    expect(page.locator('dialog[open]')).to_have_count(0)
+    expect(page.locator('.media-card')).to_have_count(0)
+    print('PASS album trash pagination + confirmed permanent removal',flush=True)
+    page.locator('.sidebar nav .nav-item').filter(has_text='Wszystkie wspomnienia').click()
+    # The top-bar theme switch is tested independently of system preferences.
+    page.locator('.topbar .icon-button').last.click()
+    assert page.evaluate('document.documentElement.dataset.theme')=='dark'
+    page.screenshot(path=str(output/'library-dark.png'),full_page=True)
+    page.set_viewport_size({'width':390,'height':844})
+    page.get_by_role('button',name='Otw\u00f3rz menu',exact=True).click()
+    expect(page.locator('.sidebar.open')).to_be_visible()
+    page.locator('.sidebar .nav-item').filter(has_text='Ustawienia').click()
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    page.screenshot(path=str(output/'settings-mobile.png'),full_page=True)
+    print('PASS dark mode + mobile navigation',flush=True)
+    page.set_viewport_size({'width':1440,'height':1000})
+    page.get_by_role('button',name='Wyloguj',exact=True).click()
+    expect(page.locator('#username')).to_be_visible()
+    page.locator('#username').fill('partner')
+    page.locator('#password').fill('Partner-test-only!')
+    page.locator('.login-submit').click()
+    page.locator('.sidebar nav .nav-item').filter(has_text='Wszystkie wspomnienia').click()
+    expect(page.locator('.media-card').first).to_be_visible()
+    print('PASS logout + second account shared library',flush=True)
+
+
+def main():
+    output=ROOT/'test-results';output.mkdir(exist_ok=True)
+    errors=[]
+    with sync_playwright() as p:
+        options={'headless':True}
+        executable=os.environ.get('PV_BROWSER_EXECUTABLE')
+        if executable:options['executable_path']=executable
+        browser=p.chromium.launch(**options)
+        page=browser.new_page(viewport={'width':1440,'height':1000})
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        page.goto('http://127.0.0.1:4180')
+        exercise(page,output,ROOT/'tests/fixtures')
+        browser.close()
+    if errors:raise AssertionError(errors)
+    print('All UI smoke checks passed. Azure/network integration is not covered.')
+
+if __name__=='__main__':main()
