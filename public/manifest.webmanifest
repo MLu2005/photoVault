@@ -1,8 +1,8 @@
 {
   "name": "photoVault",
   "short_name": "photoVault",
-  "description": "Prywatna biblioteka dla nas",
-  "lang": "pl",
+  "description": "Private library for the two of us",
+  "lang": "en",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8f9f7",

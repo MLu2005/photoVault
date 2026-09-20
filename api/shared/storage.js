@@ -7,7 +7,7 @@ function getStore() {
   const account = process.env.AZURE_STORAGE_ACCOUNT;
   const key = process.env.AZURE_STORAGE_KEY;
   const name = process.env.AZURE_STORAGE_CONTAINER || 'fullsize';
-  if (!account || !key || !/^[a-z0-9]{3,24}$/.test(account)) fail(503, 'Brak konfiguracji Azure Blob Storage.', 'CONFIGURATION');
+  if (!account || !key || !/^[a-z0-9]{3,24}$/.test(account)) fail(503, 'Azure Blob Storage configuration is missing.', 'CONFIGURATION');
   const credential = new StorageSharedKeyCredential(account, key);
   const container = new BlobServiceClient(`https://${account}.blob.core.windows.net`, credential, {
     retryOptions: { maxTries: 3, tryTimeoutInMs: 12000 }
@@ -33,7 +33,7 @@ function getStore() {
       const chunks = []; let size = 0;
       for await (const chunk of response.readableStreamBody) {
         size += chunk.length;
-        if (size > 8192) fail(500, 'Nieprawidłowe dane systemowe.');
+        if (size > 8192) fail(500, 'Invalid system data.');
         chunks.push(chunk);
       }
       return { text: Buffer.concat(chunks).toString(), etag: response.etag };

@@ -44,15 +44,15 @@ function readSession(req, config = authConfig(), now = Date.now()) {
 }
 function requireSession(req, config = authConfig()) {
   const session = readSession(req, config);
-  if (!session) fail(401, 'Zaloguj się, aby otworzyć bibliotekę.', 'UNAUTHORIZED');
+  if (!session) fail(401, 'Sign in to open the library.', 'UNAUTHORIZED');
   return session;
 }
 function requireMutation(req, session, config = authConfig()) {
   if (req.headers?.origin !== config.origin || req.headers?.['x-pv-request'] !== '1' ||
       !/^application\/json(?:\s*;|$)/i.test(req.headers?.['content-type'] || '')) {
-    fail(403, 'Niedozwolone pochodzenie lub format żądania.', 'CSRF');
+    fail(403, 'Request origin or format is not allowed.', 'CSRF');
   }
-  if (session && !equal(req.headers?.['x-csrf-token'] || '', session.csrf)) fail(403, 'Odśwież stronę i spróbuj ponownie.', 'CSRF');
+  if (session && !equal(req.headers?.['x-csrf-token'] || '', session.csrf)) fail(403, 'Refresh the page and try again.', 'CSRF');
 }
 function publicSession(session) {
   return session ? { username: session.u, displayName: session.displayName, csrfToken: session.csrf, expiresAt: new Date(session.exp * 1000).toISOString() } : null;
