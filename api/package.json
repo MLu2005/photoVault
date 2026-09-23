@@ -7,6 +7,6 @@
     "node": "22.x"
   },
   "dependencies": {
-    "@azure/storage-blob": "12.27.0"
+    "@azure/storage-blob": "12.33.0"
   }
 }
